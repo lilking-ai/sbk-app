@@ -47,5 +47,8 @@
       "artifactName": "SBK-Setup.exe",
       "shortcutName": "SBK"
     }
+  },
+  "overrides": {
+    "tslib": "2.8.1"
   }
 }

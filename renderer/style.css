@@ -19,9 +19,12 @@ a.link { color: var(--blue); text-decoration: none; } a.link:hover { text-decora
 
 /* auth + gate */
 .screen { position: fixed; inset: 0; }
-#auth, #gate { display: grid; place-items: center;
+#auth, #gate { display: flex; flex-direction: column; overflow-y: auto; padding: 24px 12px; box-sizing: border-box;
   background: radial-gradient(circle at 50% 35%, #2A1B6E 0%, #070814 70%); }
-.auth-card { width: 400px; padding: 30px 32px; border-radius: 22px; background: #0B0E26ee;
+#auth::-webkit-scrollbar, #gate::-webkit-scrollbar, .messages::-webkit-scrollbar, .panel::-webkit-scrollbar { width: 10px; }
+#auth::-webkit-scrollbar-thumb, #gate::-webkit-scrollbar-thumb, .messages::-webkit-scrollbar-thumb, .panel::-webkit-scrollbar-thumb { background: #FFD60066; border-radius: 10px; }
+#auth::-webkit-scrollbar-track, #gate::-webkit-scrollbar-track { background: transparent; }
+.auth-card { margin: auto; flex-shrink: 0; max-width: calc(100% - 8px); box-sizing: border-box; width: 400px; padding: 30px 32px; border-radius: 22px; background: #0B0E26ee;
   border: 2px solid #FFD60055; box-shadow: 0 0 60px #5A8CFF33; text-align: center; }
 .auth-logo { width: 110px; filter: drop-shadow(0 0 18px #FFD60088); }
 .auth-card h1 { margin: 8px 0 2px; font-size: 22px; letter-spacing: 1px; color: var(--gold); }

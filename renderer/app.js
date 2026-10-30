@@ -50,7 +50,7 @@ function friendly(e) {
   if (c.includes('weak-password')) return 'Password needs at least 8 characters.';
   if (c.includes('invalid-email')) return 'That email doesn\'t look right.';
   if (c.includes('too-many-requests')) return 'Too many tries. Wait a minute and try again.';
-  if (c.includes('permission-denied')) return 'You don\'t have permission to do that.';
+  if (c.includes('permission-denied')) return 'Blocked by the server rules. (Founder: make sure the SBK rules are published in Firestore → Rules.)';
   if (c.includes('network')) return 'No internet connection.';
   return e?.message || 'Something went wrong.';
 }
@@ -61,6 +61,7 @@ document.addEventListener('click', (e) => {
   if (a) { e.preventDefault(); window.sbk.openExternal(a.dataset.url); }
 });
 
+let signingUp = false;
 (async function boot() {
   await window.SBKIntro.play();
   if (!firebaseConfig.apiKey) {
@@ -73,7 +74,7 @@ document.addEventListener('click', (e) => {
   fb = initializeApp(firebaseConfig);
   auth = getAuth(fb);
   db = getFirestore(fb);
-  onAuthStateChanged(auth, (u) => { me = u; route(); });
+  onAuthStateChanged(auth, (u) => { me = u; if (!signingUp) route(); });
 })();
 
 async function route(justSignedUp = false) {
@@ -81,7 +82,12 @@ async function route(justSignedUp = false) {
   const ref = doc(db, 'users', me.uid);
   let snap = await getDoc(ref).catch(() => null);
   if (!snap || !snap.exists()) {
-    show('gate'); gate('Finish your profile', 'Your account has no clan profile yet. Sign out and sign up again.'); return;
+    show('auth');
+    document.querySelector('.tab[data-tab=signup]').click();
+    $('su-email').value = me.email || ''; $('su-email').disabled = true;
+    $('su-pass').required = false; $('su-pass').classList.add('hidden');
+    $('auth-msg').className = 'msg ok'; $('auth-msg').textContent = 'Almost done! Fill in your name, Epic and age to finish your profile.';
+    return;
   }
   profile = { id: me.uid, ...snap.data() };
   if (profile.status === 'banned') { show('gate'); gate('Banned', 'You were removed from SBK. Talk to the Founder if you think this is a mistake.'); return; }
@@ -100,11 +106,19 @@ function gate(title, text) {
   $('gate-title').textContent = title; $('gate-text').textContent = text; $('gate-msg').textContent = '';
   ['gate-refresh', 'gate-signout', 'claim-founder'].forEach((i) => $(i).classList.remove('hidden'));
 }
-$('gate-refresh').onclick = async () => { await me?.reload(); route(); };
+$('gate-refresh').onclick = async () => { await me?.reload().catch(() => {}); await me?.getIdToken(true).catch(() => {}); route(); };
 $('gate-signout').onclick = () => signOut(auth);
 $('claim-founder').onclick = async (e) => {
   e.preventDefault();
+  const gm = $('gate-msg'); gm.className = 'msg'; gm.textContent = 'Checking...';
   try {
+    await me.reload(); me = auth.currentUser;
+    if (!me.emailVerified) {
+      await sendEmailVerification(me).catch(() => {});
+      gm.textContent = `Confirm your email first. We just sent a link to ${me.email}. Click it (check spam too), then press this button again.`;
+      return;
+    }
+    await me.getIdToken(true);
     await updateDoc(doc(db, 'users', me.uid), { status: 'member', role: 'founder' });
     $('gate-msg').className = 'msg ok'; $('gate-msg').textContent = 'Founder confirmed 👑';
     setTimeout(route, 700);
@@ -139,16 +153,19 @@ $('signup-form').onsubmit = async (e) => {
   const name = clean($('su-name').value.trim()).slice(0, 24);
   const epic = $('su-epic').value.trim().slice(0, 32);
   if (name.length < 2) { m.textContent = 'Pick a longer display name.'; return; }
+  signingUp = true;
   try {
-    const cred = await createUserWithEmailAndPassword(auth, $('su-email').value.trim(), $('su-pass').value);
-    await updateProfile(cred.user, { displayName: name });
-    await setDoc(doc(db, 'users', cred.user.uid), { name, epic, status: 'pending', role: 'member', createdAt: serverTimestamp() });
-    await setDoc(doc(db, 'private', cred.user.uid), { age, createdAt: serverTimestamp() });
-    sendEmailVerification(cred.user).catch(() => {});
+    const user = auth.currentUser || (await createUserWithEmailAndPassword(auth, $('su-email').value.trim(), $('su-pass').value)).user;
+    me = user;
+    await updateProfile(user, { displayName: name }).catch(() => {});
+    await setDoc(doc(db, 'users', user.uid), { name, epic, status: 'pending', role: 'member', createdAt: serverTimestamp() });
+    await setDoc(doc(db, 'private', user.uid), { age, createdAt: serverTimestamp() }).catch(() => {});
+    if (!user.emailVerified) sendEmailVerification(user).catch(() => {});
+    $('su-email').disabled = false; $('su-pass').classList.remove('hidden'); $('su-pass').required = true;
     await window.SBKIntro.play({ welcome: true, name });
     m.className = 'msg ok'; m.textContent = 'Account created! Check your email ⚡';
-    route(true);
-  } catch (err) { m.textContent = friendly(err); }
+    signingUp = false; route(true);
+  } catch (err) { signingUp = false; m.className = 'msg'; m.textContent = friendly(err); }
 };
 
 // ---------- main ----------

@@ -1,12 +1,12 @@
 // Paste the Firebase web config here (Project settings → Your apps → </>).
 // These values are not secret. Security comes from firestore.rules.
 export const firebaseConfig = {
-  apiKey: "",
-  authDomain: "",
-  projectId: "",
-  storageBucket: "",
-  messagingSenderId: "",
-  appId: ""
+  apiKey: "AIzaSyAoXRFPG0_cf_rOfFQ-ieMfwsfnIyA9YxA",
+  authDomain: "storm-breakers-24185.firebaseapp.com",
+  projectId: "storm-breakers-24185",
+  storageBucket: "storm-breakers-24185.firebasestorage.app",
+  messagingSenderId: "513277250987",
+  appId: "1:513277250987:web:b4a3d124c0fc4a656116ee"
 };
 
 export const CHANNELS = [

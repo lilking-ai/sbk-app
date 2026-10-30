@@ -1,0 +1,51 @@
+{
+  "name": "sbk-app",
+  "productName": "SBK",
+  "version": "1.0.0",
+  "description": "Storm Breakers [SBK] clan app",
+  "main": "main.js",
+  "author": "Storm Breakers",
+  "license": "UNLICENSED",
+  "scripts": {
+    "bundle": "esbuild renderer/app.js --bundle --format=iife --minify --outfile=renderer/bundle.js",
+    "start": "npm run bundle && electron .",
+    "dist": "npm run bundle && electron-builder --win portable nsis --publish never",
+    "assets": "python gen_assets.py"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "electron": "^31.7.7",
+    "electron-builder": "^24.13.3",
+    "esbuild": "^0.21.5",
+    "firebase": "^10.14.1"
+  },
+  "build": {
+    "appId": "com.stormbreakers.sbk",
+    "productName": "SBK",
+    "copyright": "Storm Breakers [SBK]",
+    "files": [
+      "main.js",
+      "preload.js",
+      "renderer/index.html",
+      "renderer/style.css",
+      "renderer/bundle.js",
+      "renderer/intro.js",
+      "renderer/assets/**"
+    ],
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "icon": "renderer/assets/logo.png",
+      "artifactName": "${productName}-${version}-${arch}-${target}.${ext}"
+    },
+    "portable": {
+      "artifactName": "SBK-Portable.exe"
+    },
+    "nsis": {
+      "oneClick": true,
+      "artifactName": "SBK-Setup.exe",
+      "shortcutName": "SBK"
+    }
+  }
+}

@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob: data:; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com wss://*.firebaseio.com; font-src 'self' data:;" />
+  <title>SBK</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- AUTH -->
+  <section id="auth" class="screen hidden">
+    <div class="auth-card">
+      <img src="assets/logo.png" class="auth-logo" alt="SBK" />
+      <h1>STORM BREAKERS <span>[SBK]</span></h1>
+      <p class="muted">Clan members only</p>
+      <div class="tabs">
+        <button data-tab="signin" class="tab active">Sign in</button>
+        <button data-tab="signup" class="tab">Sign up</button>
+      </div>
+      <form id="signin-form" class="form">
+        <input id="si-email" type="email" placeholder="Email" required />
+        <input id="si-pass" type="password" placeholder="Password" required />
+        <button class="btn gold" type="submit">Sign in ⚡</button>
+        <a href="#" id="forgot" class="link small">Forgot password?</a>
+      </form>
+      <form id="signup-form" class="form hidden">
+        <input id="su-name" placeholder="Display name" maxlength="24" required />
+        <input id="su-epic" placeholder="Epic Games name" maxlength="32" required />
+        <input id="su-age" type="number" min="1" max="99" placeholder="Age" required />
+        <input id="su-email" type="email" placeholder="Email" required />
+        <input id="su-pass" type="password" placeholder="Password (8+ characters)" minlength="8" required />
+        <label class="check"><input id="su-rules" type="checkbox" required /> I agree to the SBK rules (respect, no cheats, no scams, never share personal info)</label>
+        <button class="btn gold" type="submit">Join SBK ⚡</button>
+        <p class="tiny muted">SBK is 14+. 13-year-olds need Founder approval. Under 13 can't join.</p>
+      </form>
+      <p id="auth-msg" class="msg"></p>
+    </div>
+  </section>
+
+  <!-- WAITING / BANNED / SETUP -->
+  <section id="gate" class="screen hidden">
+    <div class="auth-card">
+      <img src="assets/logo.png" class="auth-logo" alt="SBK" />
+      <h1 id="gate-title"></h1>
+      <p id="gate-text" class="muted"></p>
+      <button id="gate-refresh" class="btn">Check again</button>
+      <button id="gate-signout" class="btn ghost">Sign out</button>
+      <a href="#" id="claim-founder" class="link tiny">I'm the Founder</a>
+      <p id="gate-msg" class="msg"></p>
+    </div>
+  </section>
+
+  <!-- MAIN -->
+  <section id="main" class="screen hidden">
+    <aside class="side">
+      <div class="brand"><img src="assets/logo.png" alt="" /><div><b>STORM BREAKERS</b><span>[SBK]</span></div></div>
+      <div class="side-label">CHANNELS</div>
+      <nav id="channels"></nav>
+      <div class="side-label">TOOLS</div>
+      <button class="side-btn" id="btn-shot">📸 Screenshot <kbd>F8</kbd></button>
+      <button class="side-btn" id="btn-rec">🔴 Record <kbd>F9</kbd></button>
+      <button class="side-btn" id="btn-pics">🖼️ My screenshots</button>
+      <button class="side-btn" id="btn-vids">🎞️ My recordings</button>
+      <div class="me" id="me"></div>
+    </aside>
+
+    <div class="chat">
+      <header class="chat-head">
+        <div><h2 id="ch-title"># general</h2><span id="ch-desc" class="muted small"></span></div>
+        <div class="head-right">
+          <span id="rec-badge" class="rec hidden">● REC <span id="rec-time">0:00</span></span>
+          <button class="pill" data-panel="hub">⚡ Hub</button>
+          <button class="pill" data-panel="members">👥 Members</button>
+          <button class="pill staff-only hidden" data-panel="staff">🛡️ Staff <span id="pending-count" class="count hidden"></span></button>
+        </div>
+      </header>
+      <div id="messages" class="messages"></div>
+      <div id="attach" class="attach hidden"><img id="attach-img" alt="" /><button id="attach-x" class="x">✕</button></div>
+      <form id="composer" class="composer">
+        <input id="msg-input" maxlength="1000" placeholder="Message #general" autocomplete="off" />
+        <button class="btn gold" type="submit">Send</button>
+      </form>
+    </div>
+
+    <aside class="panel" id="panel">
+      <div id="panel-hub" class="panel-body"></div>
+      <div id="panel-members" class="panel-body hidden"></div>
+      <div id="panel-staff" class="panel-body hidden"></div>
+    </aside>
+  </section>
+
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="intro.js"></script>
+  <script src="bundle.js"></script>
+</body>
+</html>

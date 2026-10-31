@@ -1,16 +1,16 @@
 rules_version = '2';
-// SBK app security rules. Replace FOUNDER_EMAIL below with the Founder's sign-up email.
+// SBK app security rules. Founder: FOUNDER_EMAIL
 service cloud.firestore {
   match /databases/{database}/documents {
 
     function signedIn() { return request.auth != null; }
-    function isFounder() {
-      return signedIn() && request.auth.token.email == 'FOUNDER_EMAIL' && request.auth.token.email_verified == true;
-    }
+    function isFounder() { return signedIn() && request.auth.token.email == 'FOUNDER_EMAIL'; }
     function hasProfile() { return signedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid)); }
     function me() { return get(/databases/$(database)/documents/users/$(request.auth.uid)).data; }
     function isMember() { return isFounder() || (hasProfile() && me().status == 'member'); }
     function isStaff() { return isFounder() || (hasProfile() && me().status == 'member' && me().role in ['founder', 'leader']); }
+    function notTimedOut() { return isFounder() || !('mutedUntil' in me()) || me().mutedUntil < request.time; }
+    function validCh(ch) { return ch in ['announcements', 'general', 'lfg', 'clips', 'wins']; }
 
     match /users/{uid} {
       allow read: if isMember() || (signedIn() && request.auth.uid == uid);
@@ -20,32 +20,58 @@ service cloud.firestore {
         && request.resource.data.status == 'pending' && request.resource.data.role == 'member'
         && request.resource.data.name is string && request.resource.data.name.size() >= 2 && request.resource.data.name.size() <= 24
         && request.resource.data.epic is string && request.resource.data.epic.size() <= 32;
-      // founder can change status and role; leaders can only change status of non-staff
-      allow update: if request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'role'])
-        && (isFounder()
-            || (isStaff() && request.resource.data.role == resource.data.role && resource.data.role == 'member'
-                && request.resource.data.status in ['member', 'banned']));
+      // Founder: anything (approve, ban, timeout, promote). Leaders: approve, ban, timeout regular members only.
+      allow update: if (isFounder() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'role', 'mutedUntil']))
+        || (isStaff() && resource.data.role == 'member' && request.resource.data.role == 'member'
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'mutedUntil'])
+            && request.resource.data.status in ['member', 'banned']);
+      // kick = delete the clan profile (they can apply again)
+      allow delete: if (isFounder() && uid != request.auth.uid) || (isStaff() && resource.data.role == 'member');
     }
 
     // age is private: only the person and staff can see it
     match /private/{uid} {
       allow read: if (signedIn() && request.auth.uid == uid) || isStaff();
-      allow create: if signedIn() && request.auth.uid == uid
+      allow create, update: if signedIn() && request.auth.uid == uid
         && request.resource.data.keys().hasOnly(['age', 'createdAt'])
         && request.resource.data.age is int && request.resource.data.age >= 13 && request.resource.data.age <= 99;
     }
 
     match /channels/{ch}/messages/{id} {
-      allow read: if isMember() && ch in ['announcements', 'general', 'lfg', 'clips', 'wins'];
-      allow create: if isMember()
-        && ch in ['announcements', 'general', 'lfg', 'clips', 'wins']
+      allow read: if isMember() && validCh(ch);
+      allow create: if isMember() && validCh(ch) && notTimedOut()
         && (ch != 'announcements' || isStaff())
         && request.resource.data.uid == request.auth.uid
-        && request.resource.data.name == me().name
-        && request.resource.data.role == me().role
         && request.resource.data.text is string && request.resource.data.text.size() <= 1000
-        && (!('image' in request.resource.data) || (request.resource.data.image is string && request.resource.data.image.size() < 900000));
+        && (!('image' in request.resource.data) || (request.resource.data.image is string && request.resource.data.image.size() < 900000))
+        && (
+          // SBK Bot messages: only the Founder and Leaders can make the bot talk
+          (('bot' in request.resource.data) && request.resource.data.bot == true && isStaff()
+            && request.resource.data.name == 'SBK Bot' && request.resource.data.role == 'bot')
+          || (!('bot' in request.resource.data)
+            && request.resource.data.name == me().name && request.resource.data.role == me().role)
+        );
       allow delete: if isStaff() || (isMember() && resource.data.uid == request.auth.uid);
+    }
+
+    // cups, tournaments and other events
+    match /events/{id} {
+      allow read: if isMember();
+      allow create, update: if isStaff()
+        && request.resource.data.title is string && request.resource.data.title.size() <= 60
+        && request.resource.data.at is timestamp;
+      allow delete: if isStaff();
+    }
+
+    // SBK Bot custom commands and settings
+    match /botcmds/{id} {
+      allow read: if isMember();
+      allow create, update: if isStaff() && request.resource.data.reply is string && request.resource.data.reply.size() <= 500;
+      allow delete: if isStaff();
+    }
+    match /bot/{id} {
+      allow read: if isMember();
+      allow write: if isStaff();
     }
 
     match /reports/{id} {

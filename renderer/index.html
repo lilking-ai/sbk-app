@@ -8,6 +8,18 @@
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
+  <!-- RULES (must be read before sign in) -->
+  <section id="rules" class="screen hidden">
+    <div class="auth-card rules-card">
+      <img src="assets/logo.png" class="auth-logo" alt="SBK" />
+      <h1>Clan rules</h1>
+      <p class="muted tagline">Read all of them before you sign in. Scroll to the bottom.</p>
+      <ol id="rules-list" class="rules-list"></ol>
+      <label class="check rules-check"><input id="rules-ok" type="checkbox" disabled /> <span id="rules-ok-text">Scroll to the bottom of the rules first</span></label>
+      <button id="rules-go" class="btn gold" disabled>Continue</button>
+    </div>
+  </section>
+
   <!-- AUTH -->
   <section id="auth" class="screen hidden">
     <div class="auth-card">
@@ -30,11 +42,12 @@
         <input id="su-age" type="number" min="1" max="99" placeholder="Age" required />
         <input id="su-email" type="email" placeholder="Email" required />
         <input id="su-pass" type="password" placeholder="Password (8+ characters)" minlength="8" required />
-        <label class="check"><input id="su-rules" type="checkbox" required /> I agree to the SBK rules (respect, no cheats, no scams, never share personal info)</label>
+        <label class="check"><input id="su-rules" type="checkbox" required /> I read the SBK clan rules and I'll follow them</label>
         <button class="btn gold" type="submit">Join SBK</button>
         <p class="tiny muted">SBK is 14+. 13-year-olds need Founder approval. Under 13 can't join.</p>
       </form>
       <p id="auth-msg" class="msg"></p>
+      <a href="#" id="see-rules" class="link tiny">Read the clan rules again</a>
     </div>
   </section>
 
@@ -46,7 +59,7 @@
       <p id="gate-text" class="muted"></p>
       <button id="gate-refresh" class="btn">Check again</button>
       <button id="gate-signout" class="btn ghost">Sign out</button>
-      <a href="#" id="claim-founder" class="link tiny">I'm the Founder</a>
+      <a href="#" id="claim-founder" class="link tiny hidden">I'm the Founder</a>
       <p id="gate-msg" class="msg"></p>
     </div>
   </section>
@@ -74,6 +87,7 @@
           <button class="pill" data-panel="hub">Hub</button>
           <button class="pill" data-panel="members">Squad</button>
           <button class="pill staff-only hidden" data-panel="staff">Staff <span id="pending-count" class="count hidden"></span></button>
+          <button class="pill staff-only hidden" data-panel="bot">⚡ Bot</button>
         </div>
       </header>
       <div id="messages" class="messages"></div>
@@ -89,10 +103,12 @@
       <div id="panel-hub" class="panel-body"></div>
       <div id="panel-members" class="panel-body hidden"></div>
       <div id="panel-staff" class="panel-body hidden"></div>
+      <div id="panel-bot" class="panel-body hidden"></div>
     </aside>
   </section>
 
   <div id="toast" class="toast hidden"></div>
+  <div id="modmenu" class="modmenu hidden" role="menu"></div>
 
   <script src="intro.js"></script>
   <script src="bundle.js"></script>

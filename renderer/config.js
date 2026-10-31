@@ -26,8 +26,14 @@ export const LINKS = {
   discord: 'https://discord.gg/pkhaeUHX7W',
 };
 
-export const SCHEDULE = [
-  ['🏆 Weekly SBK Cup', 'Sat 8:00 PM', 'https://tally.so/r/laBaD5'],
-  ['⚔️ Clan War Night', 'Wed 8:00 PM'],
-  ['🎓 Coaching Night', 'Mon 7:00 PM'],
+// Clan rules. Everyone has to read these before they can sign in or sign up.
+export const CLAN_RULES = [
+  ['Respect everyone', 'No hate, racism, bullying, threats or drama. Trash talk stays friendly.'],
+  ['Play fair', 'No cheats, hacks, teaming in solos, or scams (accounts, V-Bucks, skins).'],
+  ['Keep it 14+ clean', 'No NSFW, gore or slurs. 13-year-olds only join with Founder approval.'],
+  ['Stay safe', 'Never share your address, school, passwords or photos of yourself.'],
+  ['No spam', 'No spam, random links, or advertising other clans and servers.'],
+  ['Show up', 'If you sign up for a cup or war, be there. Can\'t make it? Tell staff early.'],
+  ['Staff have the final say', 'Problem with someone? Hit 🚩 Report or message the Founder.'],
+  ['Rep SBK', 'In game and out. Breaking rules means a timeout, kick or ban.'],
 ];

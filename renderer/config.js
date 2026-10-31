@@ -27,7 +27,7 @@ export const LINKS = {
 };
 
 export const SCHEDULE = [
-  ['🏆 Weekly SBK Cup', 'Sat 8:00 PM'],
+  ['🏆 Weekly SBK Cup', 'Sat 8:00 PM', 'https://tally.so/r/laBaD5'],
   ['⚔️ Clan War Night', 'Wed 8:00 PM'],
   ['🎓 Coaching Night', 'Mon 7:00 PM'],
 ];

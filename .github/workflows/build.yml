@@ -26,6 +26,11 @@ jobs:
           mkdir -p build
           curl -sL -o build/Poppins-Bold.ttf https://github.com/google/fonts/raw/main/ofl/poppins/Poppins-Bold.ttf
           python gen_assets.py
+          mkdir -p renderer/assets/fonts
+          for f in Regular Medium Bold BoldItalic; do
+            curl -fsSL -o renderer/assets/fonts/Poppins-$f.ttf https://github.com/google/fonts/raw/main/ofl/poppins/Poppins-$f.ttf
+          done
+          ls -la renderer/assets/fonts
       - run: npm install --no-audit --no-fund
       - run: npm run dist
         env:

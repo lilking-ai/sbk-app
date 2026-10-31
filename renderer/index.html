@@ -13,7 +13,7 @@
     <div class="auth-card">
       <img src="assets/logo.png" class="auth-logo" alt="SBK" />
       <h1>STORM BREAKERS <span>[SBK]</span></h1>
-      <p class="muted">Clan members only</p>
+      <p class="muted tagline">The clan app. Members only.</p>
       <div class="tabs">
         <button data-tab="signin" class="tab active">Sign in</button>
         <button data-tab="signup" class="tab">Sign up</button>
@@ -21,7 +21,7 @@
       <form id="signin-form" class="form">
         <input id="si-email" type="email" placeholder="Email" required />
         <input id="si-pass" type="password" placeholder="Password" required />
-        <button class="btn gold" type="submit">Sign in ⚡</button>
+        <button class="btn gold" type="submit">Sign in</button>
         <a href="#" id="forgot" class="link small">Forgot password?</a>
       </form>
       <form id="signup-form" class="form hidden">
@@ -31,7 +31,7 @@
         <input id="su-email" type="email" placeholder="Email" required />
         <input id="su-pass" type="password" placeholder="Password (8+ characters)" minlength="8" required />
         <label class="check"><input id="su-rules" type="checkbox" required /> I agree to the SBK rules (respect, no cheats, no scams, never share personal info)</label>
-        <button class="btn gold" type="submit">Join SBK ⚡</button>
+        <button class="btn gold" type="submit">Join SBK</button>
         <p class="tiny muted">SBK is 14+. 13-year-olds need Founder approval. Under 13 can't join.</p>
       </form>
       <p id="auth-msg" class="msg"></p>
@@ -55,9 +55,9 @@
   <section id="main" class="screen hidden">
     <aside class="side">
       <div class="brand"><img src="assets/logo.png" alt="" /><div><b>STORM BREAKERS</b><span>[SBK]</span></div></div>
-      <div class="side-label">CHANNELS</div>
+      <div class="side-label">Channels</div>
       <nav id="channels"></nav>
-      <div class="side-label">TOOLS</div>
+      <div class="side-label">Capture</div>
       <button class="side-btn" id="btn-shot">📸 Screenshot <kbd>F8</kbd></button>
       <button class="side-btn" id="btn-rec">🔴 Record <kbd>F9</kbd></button>
       <button class="side-btn" id="btn-pics">🖼️ My screenshots</button>
@@ -67,16 +67,18 @@
 
     <div class="chat">
       <header class="chat-head">
-        <div><h2 id="ch-title"># general</h2><span id="ch-desc" class="muted small"></span></div>
+        <div class="storm" aria-hidden="true"></div>
+        <div class="ch-id"><h2 id="ch-title">general</h2><span id="ch-desc"></span></div>
         <div class="head-right">
           <span id="rec-badge" class="rec hidden">● REC <span id="rec-time">0:00</span></span>
-          <button class="pill" data-panel="hub">⚡ Hub</button>
-          <button class="pill" data-panel="members">👥 Members</button>
-          <button class="pill staff-only hidden" data-panel="staff">🛡️ Staff <span id="pending-count" class="count hidden"></span></button>
+          <button class="pill" data-panel="hub">Hub</button>
+          <button class="pill" data-panel="members">Squad</button>
+          <button class="pill staff-only hidden" data-panel="staff">Staff <span id="pending-count" class="count hidden"></span></button>
         </div>
       </header>
       <div id="messages" class="messages"></div>
       <div id="attach" class="attach hidden"><img id="attach-img" alt="" /><button id="attach-x" class="x">✕</button></div>
+      <div id="hype" class="hype"></div>
       <form id="composer" class="composer">
         <input id="msg-input" maxlength="1000" placeholder="Message #general" autocomplete="off" />
         <button class="btn gold" type="submit">Send</button>

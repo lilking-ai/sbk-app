@@ -12,11 +12,13 @@ import { firebaseConfig, CHANNELS, LINKS, SCHEDULE } from './config.js';
 
 const $ = (id) => document.getElementById(id);
 const show = (id) => ['auth', 'gate', 'main'].forEach((s) => $(s).classList.toggle('hidden', s !== id));
+// roles use Fortnite rarity tiers: Founder = Legendary, Leader = Epic, Member = Rare
 const ROLE = {
-  founder: { label: 'FOUNDER', color: '#FFD600' },
-  leader: { label: 'LEADER', color: '#FF9F1A' },
-  member: { label: 'MEMBER', color: '#5A8CFF' },
+  founder: { label: 'Founder', tier: 'legendary', color: '#FFB547' },
+  leader: { label: 'Leader', tier: 'epic', color: '#D17BFF' },
+  member: { label: 'Member', tier: 'rare', color: '#5CB8FF' },
 };
+const tile = (r, name, cls = '') => `<div class="av t-${r.tier} ${cls}">${esc(initials(name))}</div>`;
 const BAD = ['fuck', 'shit', 'bitch', 'cunt', 'dick', 'pussy', 'nigg', 'fag', 'retard', 'whore', 'slut'];
 
 let fb, auth, db, me = null, profile = null, current = 'general', unsubMsgs = null, unsubUsers = null, users = {};
@@ -169,7 +171,7 @@ $('signup-form').onsubmit = async (e) => {
 };
 
 // ---------- main ----------
-function cleanup() { unsubMsgs?.(); unsubUsers?.(); unsubMsgs = unsubUsers = null; }
+function cleanup() { unsubMsgs?.(); unsubUsers?.(); unsubMsgs = unsubUsers = null; stopWatchers(); unsubWins?.(); unsubWins = null; }
 
 function startMain() {
   show('main');
@@ -184,27 +186,30 @@ function startMain() {
     renderMembers(); renderStaff(); renderMe();
   });
   renderHub();
+  clearInterval(hubTimer); tickCountdown(); hubTimer = setInterval(tickCountdown, 20000);
+  startWatchers(); watchWins(); renderHype();
   openChannel(current);
   setPanel('hub');
 }
 
 function renderChannels() {
-  $('channels').innerHTML = CHANNELS.map((c) => `<button class="ch ${c.id === current ? 'active' : ''}" data-ch="${c.id}">${c.icon} ${c.name}</button>`).join('');
+  $('channels').innerHTML = CHANNELS.map((c) => `<button class="ch ${c.id === current ? 'active' : ''} ${c.id !== current && isUnread(c.id) ? 'unread' : ''}" data-ch="${c.id}"><span class="ic">${c.icon}</span>${c.name}${c.id !== current && isUnread(c.id) ? '<span class="dot" aria-label="new messages"></span>' : ''}</button>`).join('');
   document.querySelectorAll('.ch').forEach((b) => (b.onclick = () => openChannel(b.dataset.ch)));
 }
 
 function renderMe() {
   if (!profile) return;
-  $('me').innerHTML = `<div class="av" style="background:${colorFor(profile)}">${esc(initials(profile.name))}</div>
-    <div class="info"><b>${esc(profile.name)}</b><span class="tiny muted">${esc((ROLE[profile.role] || ROLE.member).label)}</span></div>
+  const r = ROLE[profile.role] || ROLE.member;
+  $('me').innerHTML = `${tile(r, profile.name)}
+    <div class="info"><b>${esc(profile.name)}</b><span class="tier-label t-${r.tier}">${r.label}</span></div>
     <button title="Sign out" id="so">⏻</button>`;
   $('so').onclick = () => signOut(auth);
 }
 
 function openChannel(id) {
-  current = id;
+  current = id; markRead(id);
   const ch = CHANNELS.find((c) => c.id === id);
-  $('ch-title').textContent = `${ch.icon} ${ch.name}`;
+  $('ch-title').textContent = ch.name.replace(/-/g, ' ');
   $('ch-desc').textContent = ch.desc;
   $('msg-input').placeholder = ch.staffOnly && !isStaff() ? 'Only staff can post here' : `Message #${ch.name}`;
   $('msg-input').disabled = !!(ch.staffOnly && !isStaff());
@@ -220,21 +225,26 @@ function openChannel(id) {
 
 function renderMessages(list) {
   const box = $('messages');
+  if (list.length) markRead(current, list[list.length - 1]);
   const atBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 80;
   if (!list.length) {
-    box.innerHTML = `<div class="empty"><img src="assets/logo.png" alt=""><p>No messages yet. Be the first! ⚡</p></div>`;
+    box.innerHTML = `<div class="empty"><img src="assets/logo.png" alt=""><p>Nothing here yet. Say something and start the storm ⚡</p></div>`;
     return;
   }
-  box.innerHTML = list.map((m) => {
+  box.innerHTML = list.map((m, i) => {
     const p = users[m.uid] || { role: m.role, name: m.name };
     const r = ROLE[p.role] || ROLE.member;
     const canDel = isStaff() || m.uid === me.uid;
-    return `<div class="m" data-id="${m.id}">
-      <div class="av" style="background:${r.color}">${esc(initials(p.name || m.name))}</div>
+    const prev = list[i - 1];
+    const ms = (x) => (x?.createdAt?.toMillis ? x.createdAt.toMillis() : Date.now());
+    const cont = prev && prev.uid === m.uid && ms(m) - ms(prev) < 5 * 60 * 1000;
+    const nm = p.name || m.name;
+    return `<div class="m ${cont ? 'cont' : ''}" data-id="${m.id}">
+      ${cont ? `<span class="gutter-time">${timeStr(m.createdAt).split(' ').slice(-2).join(' ')}</span>` : tile(r, nm)}
       <div class="body">
-        <div class="top"><span class="name" style="color:${r.color}">${esc(p.name || m.name)}</span>
-          <span class="badge" style="background:${r.color}22;color:${r.color}">${r.label}</span>
-          <span class="time">${timeStr(m.createdAt)}</span></div>
+        ${cont ? '' : `<div class="top"><span class="name" style="color:${r.color}">${esc(nm)}${p.role === 'founder' ? ' <span class="crown" title="Founder">👑</span>' : ''}</span>
+          <span class="badge t-${r.tier}">${r.label}</span>
+          <span class="time">${timeStr(m.createdAt)}</span></div>`}
         ${m.text ? `<div class="text">${linkify(clean(m.text))}</div>` : ''}
         ${m.image ? `<img class="shot" src="${m.image}" alt="screenshot">` : ''}
       </div>
@@ -279,35 +289,68 @@ function setPanel(p) {
   document.querySelectorAll('[data-panel]').forEach((b) => b.classList.toggle('on', b.dataset.panel === p));
 }
 
+// next scheduled event, using the PC's clock (the clan plays on Cairo time)
+const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+function nextEvent() {
+  const now = new Date(); let best = null;
+  for (const [title, when, url] of SCHEDULE) {
+    const mt = /^(\w{3}) (\d{1,2}):(\d{2}) (AM|PM)$/.exec(when); if (!mt) continue;
+    let h = +mt[2] % 12 + (mt[4] === 'PM' ? 12 : 0);
+    const d = new Date(now); d.setHours(h, +mt[3], 0, 0);
+    d.setDate(d.getDate() + ((DAYS.indexOf(mt[1]) - now.getDay() + 7) % 7));
+    if (d - now < -2 * 3600 * 1000) d.setDate(d.getDate() + 7); // keep showing "live" for 2h after start
+    if (!best || d < best.at) best = { title, when, at: d, url };
+  }
+  return best;
+}
+let hubTimer = null;
+function tickCountdown() {
+  const el = $('cd'); if (!el) return;
+  const ev = nextEvent(); if (!ev) return;
+  const ms = ev.at - new Date();
+  if (ms <= 0) { el.innerHTML = '<span class="live">Live now</span>'; return; }
+  const d = Math.floor(ms / 864e5), h = Math.floor(ms / 36e5) % 24, m = Math.floor(ms / 6e4) % 60;
+  el.innerHTML = (d ? `<b>${d}</b><i>d</i>` : '') + `<b>${h}</b><i>h</i><b>${String(m).padStart(2, '0')}</b><i>m</i>`;
+}
 function renderHub() {
+  const ev = nextEvent();
   $('panel-hub').innerHTML = `
-    <h3>⚡ THIS WEEK (Cairo time)</h3>
-    <div class="card">${SCHEDULE.map(([a, b]) => `<div class="ev"><span>${a}</span><b>${b}</b></div>`).join('')}</div>
-    <h3>📋 FORMS</h3>
+    ${ev ? `<div class="next">
+      <div class="next-label">Next up</div>
+      <div class="next-title">${ev.title}</div>
+      <div class="cd" id="cd"></div>
+      <div class="next-when">${ev.when}, Cairo time</div>
+      ${ev.url ? `<button class="btn gold next-btn" data-url="${ev.url}">Sign up</button>` : ''}
+    </div>` : ''}
+    <h3>This week</h3>
+    <div class="card">${SCHEDULE.map(([a, b]) => `<div class="ev ${ev && a === ev.title ? 'is-next' : ''}"><span>${a}</span><b>${b}</b></div>`).join('')}</div>
+    <h3>Most wins this week</h3>
+    <div class="card lb" id="lb"><p class="small muted">Loading…</p></div>
+    <h3>Forms</h3>
     <div class="card">
       <button class="linkbtn" data-url="${LINKS.cup}">🏆 Sign up for the Weekly Cup</button>
       <button class="linkbtn" data-url="${LINKS.challenge}">⚔️ Clan war challenge (send to other clans)</button>
       <button class="linkbtn" data-url="${LINKS.staff}">🎓 Apply for Staff / Coach</button>
       <button class="linkbtn" data-url="${LINKS.report}">🛡️ Private report to the Founder</button>
     </div>
-    <h3>📸 CAPTURE</h3>
+    <h3>Capture</h3>
     <div class="card small muted">Press <b>F8</b> for a screenshot and <b>F9</b> to start or stop recording, even in-game.
       Screenshots go to <b>Pictures\\SBK</b>, recordings to <b>Videos\\SBK</b>.</div>
-    <h3>🔒 STAY SAFE</h3>
+    <h3>Stay safe</h3>
     <div class="card small muted">Never share your address, school, passwords or photos of yourself. If anyone makes you uncomfortable, hit 🚩 Report on their message or tell the Founder.</div>`;
 }
 
 function memberRow(u, buttons = '') {
   const r = ROLE[u.role] || ROLE.member;
-  return `<div class="mem"><div class="av" style="background:${r.color}">${esc(initials(u.name))}</div>
-    <div class="nm" style="color:${r.color}">${esc(u.name)}<small>${esc(u.epic || '')}${u._age ? ' • age ' + u._age : ''}</small></div>${buttons}</div>`;
+  return `<div class="mem t-${r.tier}">${tile(r, u.name)}
+    <div class="nm">${esc(u.name)}${u.role === 'founder' ? ' 👑' : ''}<small>${esc(u.epic || 'No Epic name')}${u._age ? ', age ' + u._age : ''}</small></div>${buttons}</div>`;
 }
 
 function renderMembers() {
   const list = Object.values(users).filter((u) => u.status === 'member');
   const order = { founder: 0, leader: 1, member: 2 };
   list.sort((a, b) => (order[a.role] ?? 3) - (order[b.role] ?? 3) || a.name.localeCompare(b.name));
-  $('panel-members').innerHTML = `<h3>👥 MEMBERS (${list.length})</h3>` + list.map((u) => memberRow(u)).join('');
+  $('panel-members').innerHTML = `<h3>The squad <span class="h-count">${list.length}</span></h3>` + list.map((u) => memberRow(u)).join('');
 }
 
 function renderStaff() {
@@ -322,13 +365,13 @@ function renderStaff() {
   const members = Object.values(users).filter((u) => u.status === 'member' && u.id !== me.uid && u.role !== 'founder');
   const pc = $('pending-count'); pc.textContent = pending.length; pc.classList.toggle('hidden', !pending.length);
   $('panel-staff').innerHTML = `
-    <h3>⏳ WAITING FOR APPROVAL (${pending.length})</h3>
+    <h3>Waiting for approval <span class="h-count">${pending.length}</span></h3>
     ${pending.map((u) => memberRow(u, `<button class="ok-btn" data-ok="${u.id}">✓</button><button class="no-btn" data-ban="${u.id}">✕</button>`)).join('') || '<p class="small muted">Nobody waiting.</p>'}
     ${pending.some((u) => u._age === 13) ? '<p class="tiny muted">Age 13 needs Founder approval.</p>' : ''}
-    <h3 style="margin-top:16px">🛠️ MEMBERS</h3>
+    <h3>Manage members</h3>
     ${members.map((u) => memberRow(u, `${profile.role === 'founder' ? `<button class="mid-btn" data-lead="${u.id}">${u.role === 'leader' ? '↓' : '★'}</button>` : ''}<button class="no-btn" data-ban="${u.id}">Ban</button>`)).join('') || '<p class="small muted">No members yet.</p>'}
-    ${banned.length ? `<h3 style="margin-top:16px">🚫 BANNED</h3>${banned.map((u) => memberRow(u, `<button class="mid-btn" data-ok="${u.id}">Unban</button>`)).join('')}` : ''}
-    <h3 style="margin-top:16px">🚩 REPORTS</h3><div id="reports"><p class="small muted">Loading…</p></div>`;
+    ${banned.length ? `<h3>Banned</h3>${banned.map((u) => memberRow(u, `<button class="mid-btn" data-ok="${u.id}">Unban</button>`)).join('')}` : ''}
+    <h3>Reports</h3><div id="reports"><p class="small muted">Loading…</p></div>`;
   $('panel-staff').querySelectorAll('[data-ok]').forEach((b) => (b.onclick = () => approve(b.dataset.ok)));
   $('panel-staff').querySelectorAll('[data-ban]').forEach((b) => (b.onclick = () => {
     if (confirmBox('Ban this person from SBK?')) updateDoc(doc(db, 'users', b.dataset.ban), { status: 'banned' }).catch((e) => toast(friendly(e)));
@@ -365,6 +408,116 @@ function loadReports() {
     el.querySelectorAll('[data-done]').forEach((b) => (b.onclick = () => deleteDoc(doc(db, 'reports', b.dataset.done))));
   }, () => {});
 }
+
+// ---------- unread, pings and notifications ----------
+const msOf = (m) => (m?.createdAt?.toMillis ? m.createdAt.toMillis() : Date.now());
+const readKey = (ch) => `sbk_read_${me?.uid}_${ch}`;
+const latest = {}; // newest message per channel
+let watchers = [];
+function isUnread(ch) {
+  const l = latest[ch]; if (!l || l.uid === me?.uid) return false;
+  return msOf(l) > +(localStorage.getItem(readKey(ch)) || 0);
+}
+function markRead(ch, m = latest[ch]) {
+  if (m) localStorage.setItem(readKey(ch), String(Math.max(msOf(m), +(localStorage.getItem(readKey(ch)) || 0))));
+}
+function stopWatchers() { watchers.forEach((u) => u()); watchers = []; }
+function startWatchers() {
+  stopWatchers();
+  CHANNELS.forEach((c) => {
+    let first = true; const seen = new Set();
+    watchers.push(onSnapshot(query(collection(db, 'channels', c.id, 'messages'), orderBy('createdAt', 'desc'), limit(1)), (s) => {
+      let m = null; s.forEach((d) => (m = { id: d.id, ...d.data() }));
+      latest[c.id] = m;
+      if (first) { first = false; if (m) seen.add(m.id); if (m && !localStorage.getItem(readKey(c.id))) markRead(c.id, m); renderChannels(); return; }
+      // wait for the server time on new messages, and handle each message once
+      if (!m || !m.createdAt || seen.has(m.id)) { renderChannels(); return; }
+      seen.add(m.id);
+      if (c.id === current && document.hasFocus()) markRead(c.id, m);
+      renderChannels();
+      if (m.uid !== me.uid) ping(c, m);
+      if (c.id === 'wins') victory(m);
+    }, () => {}));
+  });
+}
+const muted = () => localStorage.getItem('sbk_mute') === '1';
+let actx = null;
+function tone(notes, type = 'triangle', vol = 0.12) {
+  if (muted()) return;
+  try {
+    actx = actx || new AudioContext();
+    let t = actx.currentTime;
+    for (const [f, d] of notes) {
+      const o = actx.createOscillator(), g = actx.createGain();
+      o.type = type; o.frequency.setValueAtTime(f, t);
+      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + d);
+      o.connect(g).connect(actx.destination); o.start(t); o.stop(t + d + 0.02); t += d * 0.7;
+    }
+  } catch { /* audio not available */ }
+}
+function ping(ch, m) {
+  const away = !document.hasFocus() || document.hidden;
+  if (away || ch.id !== current) tone([[880, 0.09], [1320, 0.14]]);
+  if (away && !muted() && 'Notification' in window) {
+    try {
+      const n = new Notification(`${m.name} in #${ch.name}`, { body: m.text ? m.text.slice(0, 120) : '📸 sent a screenshot', silent: true });
+      n.onclick = () => { window.focus(); openChannel(ch.id); };
+    } catch { /* notifications blocked */ }
+  }
+}
+
+// ---------- victory royale ----------
+function victory(m) {
+  document.querySelector('.vr')?.remove();
+  const el = document.createElement('div'); el.className = 'vr';
+  const who = m.uid === me.uid ? 'You got the dub!' : `${esc(m.name)} got the dub!`;
+  el.innerHTML = `<div class="vr-flash"></div><div class="vr-rays"></div>
+    <div class="vr-text"><span class="vr-1">#1</span><span class="vr-2">Victory Royale</span><span class="vr-3">${who}</span></div>
+    <div class="vr-hint">Click to close</div>`;
+  for (let i = 0; i < 46; i++) {
+    const c = document.createElement('i'); c.className = 'vr-bit';
+    c.style.cssText = `left:${Math.random() * 100}%;animation-delay:${(Math.random() * 0.6).toFixed(2)}s;animation-duration:${(1.6 + Math.random() * 1.4).toFixed(2)}s;background:${['#FFE03A', '#B651FF', '#69C6FF', '#FFC75A', '#fff'][i % 5]};transform:rotate(${Math.random() * 360}deg)`;
+    el.appendChild(c);
+  }
+  el.onclick = () => el.remove();
+  document.body.appendChild(el);
+  tone([[523, 0.14], [659, 0.14], [784, 0.14], [1047, 0.5]], 'square', 0.07);
+  setTimeout(() => el.classList.add('out'), 3600);
+  setTimeout(() => el.remove(), 4200);
+}
+
+// ---------- wins leaderboard ----------
+let unsubWins = null;
+function watchWins() {
+  unsubWins?.();
+  unsubWins = onSnapshot(query(collection(db, 'channels', 'wins', 'messages'), orderBy('createdAt', 'desc'), limit(200)), (s) => {
+    const since = Date.now() - 7 * 864e5, count = {};
+    s.forEach((d) => { const m = d.data(); if (m.createdAt && msOf(m) >= since) count[m.uid] = (count[m.uid] || 0) + 1; });
+    const top = Object.entries(count).sort((a, b) => b[1] - a[1]).slice(0, 5);
+    const el = $('lb'); if (!el) return;
+    el.innerHTML = top.length ? top.map(([uid, n], i) => {
+      const u = users[uid] || { name: 'Someone', role: 'member' }; const r = ROLE[u.role] || ROLE.member;
+      return `<div class="lb-row ${i === 0 ? 'lb-top' : ''}"><span class="lb-pos">${i + 1}</span>${tile(r, u.name)}<span class="lb-name">${esc(u.name)}</span><span class="lb-n">${n}<small>${n === 1 ? 'win' : 'wins'}</small></span></div>`;
+    }).join('') : '<p class="small muted">No wins posted yet. Drop a Victory Royale screenshot in #wins to take #1.</p>';
+  }, () => {});
+}
+
+// ---------- quick hype bar ----------
+const HYPE = ['GG', 'W', '🔥', '💀', '👑', '⚡', 'clutch', 'on my way'];
+function renderHype() {
+  const bar = $('hype'); if (!bar) return;
+  bar.innerHTML = HYPE.map((h) => `<button type="button" data-h="${esc(h)}">${esc(h)}</button>`).join('') +
+    `<button type="button" class="mute" id="mute" title="Sounds and alerts">${muted() ? '🔕' : '🔔'}</button>`;
+  bar.querySelectorAll('[data-h]').forEach((b) => (b.onclick = () => {
+    const i = $('msg-input'); if (i.disabled) return;
+    i.value = (i.value.trim() ? i.value.trimEnd() + ' ' : '') + b.dataset.h; i.focus();
+  }));
+  $('mute').onclick = () => {
+    localStorage.setItem('sbk_mute', muted() ? '0' : '1'); renderHype();
+    toast(muted() ? '🔕 Sounds and alerts off' : '🔔 Sounds and alerts on', 1800);
+  };
+}
+window.addEventListener('focus', () => { if (latest[current]) { markRead(current); renderChannels(); } });
 
 // ---------- screenshots ----------
 function shrink(dataUrl, maxW = 1100, q = 0.72) {
@@ -411,7 +564,7 @@ async function toggleRecord() {
     recorder.ondataavailable = (e) => e.data.size && recChunks.push(e.data);
     recorder.onstop = async () => {
       stream.getTracks().forEach((tr) => tr.stop());
-      clearInterval(recTimer); $('rec-badge').classList.add('hidden'); $('btn-rec').textContent = '🔴 Record';
+      clearInterval(recTimer); $('rec-badge').classList.add('hidden'); $('btn-rec').innerHTML = '🔴 Record <kbd>F9</kbd>';
       window.sbk.recordingState(false);
       const buf = await new Blob(recChunks, { type: 'video/webm' }).arrayBuffer();
       const file = await window.sbk.saveRecording(new Uint8Array(buf));
@@ -420,7 +573,7 @@ async function toggleRecord() {
     };
     recorder.start(1000);
     recStart = Date.now();
-    $('rec-badge').classList.remove('hidden'); $('btn-rec').textContent = '⏹️ Stop recording';
+    $('rec-badge').classList.remove('hidden'); $('btn-rec').innerHTML = '⏹️ Stop recording <kbd>F9</kbd>';
     window.sbk.recordingState(true);
     recTimer = setInterval(() => {
       const s = Math.floor((Date.now() - recStart) / 1000);

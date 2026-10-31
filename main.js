@@ -4,6 +4,7 @@ const path = require('path');
 const fs = require('fs');
 
 let win;
+app.setAppUserModelId('com.stormbreakers.sbk'); // lets Windows show SBK notifications
 
 function stamp() {
   const d = new Date();
